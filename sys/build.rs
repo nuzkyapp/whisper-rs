@@ -218,7 +218,9 @@ fn main() {
 
     if cfg!(feature = "vulkan") {
         config.define("GGML_VULKAN", "ON");
-        if cfg!(windows) {
+        if cfg!(feature = "dynamic-backends") {
+            // The Vulkan backend links the loader itself, so the program starts without one.
+        } else if cfg!(windows) {
             println!("cargo:rerun-if-env-changed=VULKAN_SDK");
             println!("cargo:rustc-link-lib=vulkan-1");
             let vulkan_path = match env::var("VULKAN_SDK") {
@@ -275,6 +277,26 @@ fn main() {
         config.define("CMAKE_BUILD_TYPE", "Release");
     }
 
+    let dynamic_backends = cfg!(feature = "dynamic-backends");
+    if dynamic_backends {
+        config.define("BUILD_SHARED_LIBS", "ON");
+        config.define("GGML_BACKEND_DL", "ON");
+        // Every library the program needs at run time in one directory: the shared libraries it
+        // links and the backends ggml_backend_load_all_from_path loads from there.
+        config.define("CMAKE_INSTALL_LIBDIR", "lib");
+        config.define("CMAKE_INSTALL_BINDIR", "lib");
+        if target.contains("apple") {
+            config.define("CMAKE_INSTALL_RPATH", "@loader_path");
+        } else if !target.contains("windows") {
+            config.define("CMAKE_INSTALL_RPATH", "$ORIGIN");
+        }
+        // One CPU backend per instruction set; ggml loads the best one the processor runs.
+        let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+        if arch == "x86_64" || arch == "x86" {
+            config.define("GGML_CPU_ALL_VARIANTS", "ON");
+        }
+    }
+
     // Allow passing any WHISPER or CMAKE compile flags
     for (key, value) in env::vars() {
         let is_whisper_flag =
@@ -303,46 +325,57 @@ fn main() {
     add_link_search_path(&out.join("build")).unwrap();
 
     println!("cargo:rustc-link-search=native={}", destination.display());
-    if cfg!(feature = "intel-sycl") {
-        println!("cargo:rustc-link-lib=whisper");
-        println!("cargo:rustc-link-lib=ggml");
-        println!("cargo:rustc-link-lib=ggml-base");
-        println!("cargo:rustc-link-lib=ggml-cpu");
+    if dynamic_backends {
+        let lib_dir = destination.join("lib");
+        println!("cargo:rustc-link-search=native={}", lib_dir.display());
+        println!("cargo:rustc-link-lib=dylib=whisper");
+        println!("cargo:rustc-link-lib=dylib=ggml");
+        println!("cargo:rustc-link-lib=dylib=ggml-base");
+        // DEP_WHISPER_LIB_DIR for crates that depend on this one directly, to ship the
+        // libraries with their program and to find the backends.
+        println!("cargo:LIB_DIR={}", lib_dir.display());
     } else {
-        println!("cargo:rustc-link-lib=static=whisper");
-        println!("cargo:rustc-link-lib=static=ggml");
-        println!("cargo:rustc-link-lib=static=ggml-base");
-        println!("cargo:rustc-link-lib=static=ggml-cpu");
-    }
-    if cfg!(target_os = "macos") || cfg!(feature = "openblas") {
-        println!("cargo:rustc-link-lib=static=ggml-blas");
-    }
-    if cfg!(feature = "vulkan") {
         if cfg!(feature = "intel-sycl") {
-            println!("cargo:rustc-link-lib=ggml-vulkan");
+            println!("cargo:rustc-link-lib=whisper");
+            println!("cargo:rustc-link-lib=ggml");
+            println!("cargo:rustc-link-lib=ggml-base");
+            println!("cargo:rustc-link-lib=ggml-cpu");
         } else {
-            println!("cargo:rustc-link-lib=static=ggml-vulkan");
+            println!("cargo:rustc-link-lib=static=whisper");
+            println!("cargo:rustc-link-lib=static=ggml");
+            println!("cargo:rustc-link-lib=static=ggml-base");
+            println!("cargo:rustc-link-lib=static=ggml-cpu");
         }
-    }
+        if cfg!(target_os = "macos") || cfg!(feature = "openblas") {
+            println!("cargo:rustc-link-lib=static=ggml-blas");
+        }
+        if cfg!(feature = "vulkan") {
+            if cfg!(feature = "intel-sycl") {
+                println!("cargo:rustc-link-lib=ggml-vulkan");
+            } else {
+                println!("cargo:rustc-link-lib=static=ggml-vulkan");
+            }
+        }
 
-    if cfg!(feature = "hipblas") {
-        println!("cargo:rustc-link-lib=static=ggml-hip");
-    }
+        if cfg!(feature = "hipblas") {
+            println!("cargo:rustc-link-lib=static=ggml-hip");
+        }
 
-    if cfg!(feature = "metal") {
-        println!("cargo:rustc-link-lib=static=ggml-metal");
-    }
+        if cfg!(feature = "metal") {
+            println!("cargo:rustc-link-lib=static=ggml-metal");
+        }
 
-    if cfg!(feature = "cuda") {
-        println!("cargo:rustc-link-lib=static=ggml-cuda");
-    }
+        if cfg!(feature = "cuda") {
+            println!("cargo:rustc-link-lib=static=ggml-cuda");
+        }
 
-    if cfg!(feature = "openblas") {
-        println!("cargo:rustc-link-lib=static=ggml-blas");
-    }
+        if cfg!(feature = "openblas") {
+            println!("cargo:rustc-link-lib=static=ggml-blas");
+        }
 
-    if cfg!(feature = "intel-sycl") {
-        println!("cargo:rustc-link-lib=ggml-sycl");
+        if cfg!(feature = "intel-sycl") {
+            println!("cargo:rustc-link-lib=ggml-sycl");
+        }
     }
 
     println!(

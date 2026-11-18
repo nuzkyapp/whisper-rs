@@ -37,6 +37,7 @@ vulkan = []
 force-debug = []
 openmp = []
 intel-sycl = []
+dynamic-backends = []
 
 [build-dependencies]
 cmake = "0.1"
