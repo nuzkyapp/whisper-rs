@@ -322,7 +322,11 @@ fn main() {
 
     let destination = config.build();
 
-    add_link_search_path(&out.join("build")).unwrap();
+    // Only the static libraries are spread over the build tree. Every directory of a build with
+    // all CPU variants would make rustc's command line too long for Windows.
+    if !dynamic_backends {
+        add_link_search_path(&out.join("build")).unwrap();
+    }
 
     println!("cargo:rustc-link-search=native={}", destination.display());
     if dynamic_backends {
