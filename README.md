@@ -76,14 +76,12 @@ All disabled by default unless otherwise specified.
 * `vulkan`: enable Vulkan support. Implicitly enables hidden GPU flag at runtime.
 * `log_backend`: allows hooking into whisper.cpp's log output and sending it to the `log` backend. Requires calling
 * `tracing_backend`: allows hooking into whisper.cpp's log output and sending it to the `tracing` backend.
-
-whisper-rs-sys also has `dynamic-backends`, which builds whisper.cpp and ggml as shared libraries and every ggml backend
-as a library loaded at run time (`GGML_BACKEND_DL`). On x86 it builds the CPU backend once per instruction set
-(`GGML_CPU_ALL_VARIANTS`), so one build runs on any x86-64 CPU and still uses AVX2 or AVX-512 where the CPU has them.
-The libraries are installed into the directory the build script exports as `DEP_WHISPER_LIB_DIR`; ship them with
-the program and call `ggml_backend_load_all_from_path` with their directory before using whisper.cpp. whisper-rs's
-`vulkan` module calls functions of the Vulkan backend, which the program does not link with `dynamic-backends`, so
-enable whisper-rs-sys's `vulkan` instead.
+* `dynamic-backends`: build whisper.cpp and ggml as shared libraries and every ggml backend as a library loaded at
+  run time (`GGML_BACKEND_DL`). On x86 the CPU backend is built once per instruction set (`GGML_CPU_ALL_VARIANTS`), so
+  one build runs on any x86-64 CPU and still uses AVX2 or AVX-512 where the CPU has them. whisper-rs-sys installs the
+  libraries into the directory it exports as `DEP_WHISPER_LIB_DIR`; ship them with the program and call
+  `ggml_backend_load_all_from_path` with their directory before using whisper.cpp. `SystemInfo` and the `vulkan`
+  module, which call the CPU and Vulkan backends directly, are left out.
 
 ## Building
 

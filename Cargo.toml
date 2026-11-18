@@ -38,6 +38,9 @@ metal = ["whisper-rs-sys/metal", "_gpu"]
 vulkan = ["whisper-rs-sys/vulkan", "_gpu", "dep:libc"]
 openmp = ["whisper-rs-sys/openmp"]
 intel-sycl = ["whisper-rs-sys/intel-sycl", "_gpu"]
+# ggml's backends as libraries loaded at run time (see whisper-rs-sys). Leaves out the API that
+# calls the CPU or Vulkan backend directly, which the program no longer links.
+dynamic-backends = ["whisper-rs-sys/dynamic-backends"]
 _gpu = []
 test-with-tiny-model = []
 

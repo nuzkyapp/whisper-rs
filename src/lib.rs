@@ -6,7 +6,7 @@
 //! You can get a [`WhisperState`] by first creating a [`WhisperContext`] using [`WhisperContext::new_with_params`],
 //! and then calling [`WhisperContext::create_state`].
 
-#[cfg(feature = "vulkan")]
+#[cfg(all(feature = "vulkan", not(feature = "dynamic-backends")))]
 pub mod vulkan;
 
 mod common_logging;

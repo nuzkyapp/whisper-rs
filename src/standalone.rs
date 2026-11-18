@@ -109,6 +109,7 @@ pub fn print_system_info() -> &'static str {
 ///
 /// # C++ equivalent
 /// `int ggml_cpu_has_...`
+#[cfg(not(feature = "dynamic-backends"))]
 #[derive(Debug)]
 pub struct SystemInfo {
     pub avx: bool,
@@ -117,6 +118,7 @@ pub struct SystemInfo {
     pub f16c: bool,
 }
 
+#[cfg(not(feature = "dynamic-backends"))]
 impl Default for SystemInfo {
     fn default() -> Self {
         unsafe {
